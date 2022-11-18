@@ -12,7 +12,7 @@ using namespace std;
  C_BluetoohCom::C_BluetoohCom():
 
  {
-andre
+
  }
 
  C_BluetoohCom::~C_BluetoohCom():
