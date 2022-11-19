@@ -4,7 +4,9 @@
  
 #include <pthread.h>
 #include <mqueue.h> 
- 
+
+#include "C_DevSound.h"
+#include "C_BlueTransmission.h"
 
  
 class C_LocalSystem 
@@ -17,7 +19,29 @@ public:
     void run();
  
 private:
+    
+    static void *T_RecvSensors(void*);
+    static void *T_BluetTransmission(void*);
+    static void *T_Alert(void*);
  
+ private:
+    
+    static void Signal_Handler(int sig);
+ 
+ private:
+
+    C_DevSound m_speaker;
+    C_BlueTransmission m_remoteConnection;
+
+    pthread_t T_RecvSensors_id;
+    pthread_t T_BluetTransmission_id;
+    pthread_t T_Alert_id;
+ 
+    pthread_mutex_t mutexRecvSensors;
+    pthread_cond_t condRecvSensors;
+
+
+    mqd_t msgqSensors;
 
   
 };
