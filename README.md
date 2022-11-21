@@ -1,3 +1,3 @@
 # D3-driver-drownsiness-detection
 
-by Andre e Carlos
+by Andre and Carlos
