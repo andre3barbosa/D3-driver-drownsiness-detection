@@ -4,44 +4,44 @@
  
 #include <pthread.h>
 #include <mqueue.h> 
+#include <signal.h>
 
-#include "C_DevSound.h"
-#include "C_BlueTransmission.h"
+
+#include "CDevSound.h"
+#include "CBluetoothCom.h"
 
  
-class C_LocalSystem 
+class CLocalSystem 
 {
 public:
-    C_LocalSystem();
-    ~C_LocalSystem();
+    /*Public function member*/
+    CLocalSystem(const CDevSound&, const CBluetoothCom&);
+    ~CLocalSystem();
  
     void init();
     void run();
  
 private:
+    /*Thread workers*/
+    static void* BluetTransmission(void*);
+    static void* Alert(void*);
     
-    static void *T_RecvSensors(void*);
-    static void *T_BluetTransmission(void*);
-    static void *T_Alert(void*);
+    /*Signal handler*/
+    static void signal_Handler(int sig);
  
- private:
-    
-    static void Signal_Handler(int sig);
- 
- private:
+    /*private Data member*/
+    const CDevSound m_speaker;
+    const CBluetoothCom m_remoteConnection;
 
-    C_DevSound m_speaker;
-    C_BlueTransmission m_remoteConnection;
-
-    pthread_t T_RecvSensors_id;
+    /*Threads ids*/
     pthread_t T_BluetTransmission_id;
     pthread_t T_Alert_id;
  
-    pthread_mutex_t mutexRecvSensors;
-    pthread_cond_t condRecvSensors;
+    pthread_mutex_t mutexSoundMsg;
+    pthread_cond_t condSoundMsg;
 
-
-    mqd_t msgqSensors;
+    /*Message queue to read the trip store during the trip*/
+    mqd_t msgQueueSensors;
 
   
 };

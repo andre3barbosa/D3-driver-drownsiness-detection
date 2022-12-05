@@ -1,12 +1,12 @@
-#ifndef __C_BluetoothCom_H__
-#define __C_BluetoothCom_H__
+#ifndef __CBluetoothCom_H__
+#define __CBluetoothCom_H__
  
  
-class C_BluetoothCom
+class CBluetoothCom
 {
 public:
-    C_BluetoothCom();
-    ~C_BluetoothCom();
+    CBluetoothCom(int, int, int);
+    ~CBluetoothCom();
  
 
     bool init();
@@ -21,8 +21,8 @@ public:
 private:
     
     int m_portNumber;
-    BlueTarget m_targetAddress;
-    BlueTarget m_nameAddress;
+    //BlueTarget m_targetAddress;
+    //BlueTarget m_nameAddress;
 
     
    

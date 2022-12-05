@@ -3,19 +3,14 @@
  
 #include <string>
  
-class C_DevSound
+class CDevSound
 {
 public:
-    C_DevSound();
-    ~C_DevSound();
+    CDevSound();
+    ~CDevSound();
  
-    void setAlarm(string);
+    void setAlarm(int);
   
-private:
-    
-    // ver melhor como reproduzir este alarm em string
-    string alarmSound();
-   
 };
 // End C_DevSound class definition
  

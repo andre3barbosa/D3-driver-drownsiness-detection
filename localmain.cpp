@@ -1,5 +1,5 @@
 /* Includes */
-#include "C_LocalSystem.h"      
+#include "CLocalSystem.h"      
 #include <iostream>
 
 using namespace std;
@@ -7,10 +7,10 @@ using namespace std;
  
 int main(int argc, char *argv[])
 {
-    C_LocalSystem localsystem;
+    CLocalSystem localSystem;
  
-    localsystem.init();
-    localsystem.run();
+    localSystem.init();
+    localSystem.run();
  
     cout << endl << "C_LocalSystem localsystem: Exited main()" << endl;
     return 0;
