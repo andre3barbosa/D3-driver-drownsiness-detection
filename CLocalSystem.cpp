@@ -2,13 +2,19 @@
 
 
 using namespace std;
+
+
+CLocalSystem* CLocalSystem::myPtr = NULL;
+
 //constructor
-CLocalSystem::CLocalSystem(const CDevSound& soundDev,const CBluetoothCom& blueCom)  //member-initializer list
-    : m_speaker(soundDev),
-      m_remoteConnection(blueCom)
+CLocalSystem::CLocalSystem()  //member-initializer list
+    : m_speaker(),
+      m_remoteConnection()
 {
     this->init();
     this->run();
+
+    myPtr = this;
 }
 //
 CLocalSystem::~CLocalSystem()
@@ -37,23 +43,30 @@ void CLocalSystem::init()
 //define the priority and attributes of each thread
 // open the msg queue
     //mq_open(&msgQueueSensors);
+    pthread_mutex_init(&mutexSoundMsg, NULL);
+    pthread_cond_init(&condSoundMsg, NULL);
 
+    pthread_create(&T_BluetTransmission_id, NULL, BluetTransmission, this);
+    pthread_create(&T_Alert_id, NULL, Alert, this);
 }
 
  
 void CLocalSystem::signal_Handler(int sig)
 {
     //stringstream debug_msg;
-    pthread_mutex_lock(&mutexSoundMsg);
+    pthread_mutex_lock(&myPtr->mutexSoundMsg);
     switch(sig)
     {
         case SIGUSR1:      //secondary sensors signal
-            soundMsg = 1;
-            pthread_cond_signal(condSoundMsg);
+            myPtr->soundMsg = 1;
+            cout << "SIGUSR1 received!" << endl;
+            pthread_cond_signal(&myPtr->condSoundMsg);
             break;
  
         case SIGUSR2:      //camera signal
-            soundMsg = 2;
+            myPtr->soundMsg = 2;
+            cout << "SIGUSR2 received!" << endl;
+            pthread_cond_signal(&myPtr->condSoundMsg);
             // remove msgq from the system
             /*if (mq_unlink(MSGQ_NAME) == -1)
                 panic("Removing queue error");
@@ -61,19 +74,24 @@ void CLocalSystem::signal_Handler(int sig)
             debug_msg.str("");
             debug_msg << "[CLS::sigHandler] closing...";
             DEBUG_MSG(debug_msg.str().c_str());*/
- 
+            break;
             //exit(0);
         default:
             /*debug_msg.str("");
             debug_msg << "[CLS::sigHandler] caught unexpected signal";
             DEBUG_MSG(debug_msg.str().c_str());*/
     }
-    pthread_mutex_unlock(&this->condSoundMsg);
+    pthread_mutex_unlock(&myPtr->mutexSoundMsg);
 }
   
 
 void* CLocalSystem::BluetTransmission(void *arg)
 {
+
+    while(1)
+    {
+
+    }
     //listen for devices
     //idenity the address that the system must connect
 
@@ -91,12 +109,17 @@ void* CLocalSystem::BluetTransmission(void *arg)
  
 void* CLocalSystem::Alert(void *arg)
 {
-    //mutex associated to the condition variable to avoid race conditions
-    pthread_cond_wait(&this->condSoundMsg,&this->mutexSoundMsg);
-    //unclock the mutex associated to the condition variable to avoid race conditions
-    pthread_mutex_lock(&this->mutexSoundMsg);   //mutex associated to soundMsg var
-    this->m_speaker.setAlarm(soundMsg);       //breaks when sound msg is finisg
-    pthread_mutex_unlock(&this->mutexSoundMsg);
+    while(1)
+    {
+        
+        //mutex associated to the condition variable to avoid race conditions
+        pthread_mutex_lock(&myPtr->mutexSoundMsg);   //mutex associated to soundMsg var
+        
+        pthread_cond_wait(&myPtr->condSoundMsg,&myPtr->mutexSoundMsg);
+        //unclock the mutex associated to the condition variable to avoid race conditions
+        myPtr->m_speaker.setAlarm(myPtr->soundMsg);  //breaks when sound msg is finisg
+        pthread_mutex_unlock(&myPtr->mutexSoundMsg);
+    }
 
 }
  

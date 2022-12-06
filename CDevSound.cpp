@@ -1,4 +1,4 @@
-#include "C_DevSound.h"
+#include "CDevSound.h"
 
 //debug
 //#include <unistd.h>
@@ -9,19 +9,17 @@
 using namespace std;
  
 
- C_DevSound::C_DevSound():
-
+ CDevSound::CDevSound()
  {
 
  }
 
- C_DevSound::~C_DevSound():
-
+ CDevSound::~CDevSound()
  {
 
  }
 
- int C_DevSound::setAlarm(int SoundMsg):
+ int CDevSound::setAlarm(int SoundMsg) const
  {
     switch(SoundMsg)
     {

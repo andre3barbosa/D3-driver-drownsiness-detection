@@ -1,11 +1,11 @@
-#ifndef __C_LOCALSYSTEM_H__
-#define __C_LOCALSYSTEM_H__
+#ifndef __CLOCALSYSTEM_H__
+#define __CLOCALSYSTEM_H__
  
  
 #include <pthread.h>
 #include <mqueue.h> 
 #include <signal.h>
-
+#include <iostream> //for debug purpose
 
 #include "CDevSound.h"
 #include "CBluetoothCom.h"
@@ -15,7 +15,7 @@ class CLocalSystem
 {
 public:
     /*Public function member*/
-    CLocalSystem(const CDevSound&, const CBluetoothCom&);
+    CLocalSystem();
     ~CLocalSystem();
  
     void init();
@@ -33,6 +33,8 @@ private:
     const CDevSound m_speaker;
     const CBluetoothCom m_remoteConnection;
 
+
+    static CLocalSystem* myPtr;
     /*Threads ids*/
     pthread_t T_BluetTransmission_id;
     pthread_t T_Alert_id;
@@ -43,7 +45,7 @@ private:
     /*Message queue to read the trip store during the trip*/
     mqd_t msgQueueSensors;
 
-  
+    int soundMsg;
 };
 // End C_LocalSystem class definition
  

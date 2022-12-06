@@ -9,8 +9,8 @@ public:
     CDevSound();
     ~CDevSound();
  
-    void setAlarm(int);
-  
+    int setAlarm(int) const;
+    
 };
 // End C_DevSound class definition
  

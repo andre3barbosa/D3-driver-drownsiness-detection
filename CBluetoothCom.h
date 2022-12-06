@@ -5,7 +5,7 @@
 class CBluetoothCom
 {
 public:
-    CBluetoothCom(int, int, int);
+    CBluetoothCom();
     ~CBluetoothCom();
  
 

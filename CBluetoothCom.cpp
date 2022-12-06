@@ -9,8 +9,8 @@
 using namespace std;
  
 
-CBluetoothCom::CBluetoothCom(int a, int b, int c)
-    ://member-initializer list
+CBluetoothCom::CBluetoothCom()
+    //member-initializer list
 {
 
 }
