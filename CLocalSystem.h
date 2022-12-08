@@ -4,8 +4,7 @@
  
 #include <pthread.h>
 #include <mqueue.h> 
-#include <signal.h>
-#include <iostream> //for debug purpose
+
 
 #include "CDevSound.h"
 #include "CBluetoothCom.h"
@@ -40,6 +39,7 @@ private:
     pthread_t T_Alert_id;
  
     pthread_mutex_t mutexSoundMsg;
+    pthread_mutex_t mutexAlert;
     pthread_cond_t condSoundMsg;
 
     /*Message queue to read the trip store during the trip*/

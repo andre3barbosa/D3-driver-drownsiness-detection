@@ -1,5 +1,7 @@
 #include "CLocalSystem.h"
 
+#include <signal.h>
+#include <iostream> //for debug purpose
 
 using namespace std;
 
@@ -9,11 +11,8 @@ CLocalSystem* CLocalSystem::myPtr = NULL;
 //constructor
 CLocalSystem::CLocalSystem()  //member-initializer list
     : m_speaker(),
-      m_remoteConnection()
+    m_remoteConnection()
 {
-    this->init();
-    this->run();
-
     myPtr = this;
 }
 //
@@ -24,20 +23,6 @@ CLocalSystem::~CLocalSystem()
 
 }
  
-
- 
-void CLocalSystem::run()
-{
- 
-    // set signal handler for sensors signal
-    signal(SIGUSR1, signal_Handler);    //camera alert signal
-    signal(SIGUSR2, signal_Handler);    //secondary sensors advice signal
- 
-    pthread_join(T_BluetTransmission_id, NULL);
-    pthread_join(T_Alert_id, NULL);
-}
-
-
 void CLocalSystem::init()
 {
 //define the priority and attributes of each thread
@@ -49,45 +34,64 @@ void CLocalSystem::init()
     pthread_create(&T_BluetTransmission_id, NULL, BluetTransmission, this);
     pthread_create(&T_Alert_id, NULL, Alert, this);
 }
+ 
+void CLocalSystem::run()
+{
+ 
+    // set signal handler for sensors signal
+    signal(SIGUSR1, signal_Handler);    //camera alert signal
+    signal(SIGUSR2, signal_Handler);    //secondary sensors advice signal
+ 
+    //pthread_join(T_BluetTransmission_id, NULL);
+    pthread_join(T_Alert_id, NULL);
+}
 
  
 void CLocalSystem::signal_Handler(int sig)
 {
-    //stringstream debug_msg;
-    pthread_mutex_lock(&myPtr->mutexSoundMsg);
+    
+    
     switch(sig)
     {
         case SIGUSR1:      //secondary sensors signal
+            pthread_mutex_lock(&myPtr->mutexSoundMsg);        
             myPtr->soundMsg = 1;
-            cout << "SIGUSR1 received!" << endl;
+            //cout << "SIGUSR1 received!" << endl;
+
+            //pthread_mutex_lock(&myPtr->mutexAlert);
             pthread_cond_signal(&myPtr->condSoundMsg);
+            //pthread_cond_signal(&thisPtr->condRecvSensors);
+            pthread_mutex_unlock(&myPtr->mutexSoundMsg); 
+            //pthread_mutex_unlock(&myPtr->mutexAlert);*/
+            cout << "SIGUSR1 received!" << endl;
             break;
  
         case SIGUSR2:      //camera signal
+            pthread_mutex_lock(&myPtr->mutexSoundMsg); 
             myPtr->soundMsg = 2;
-            cout << "SIGUSR2 received!" << endl;
+            //pthread_mutex_lock(&myPtr->mutexSoundMsg); 
+            //cout << "SIGUSR2 received!" << endl;
+
+            //pthread_mutex_lock(&myPtr->mutexAlert);
             pthread_cond_signal(&myPtr->condSoundMsg);
-            // remove msgq from the system
-            /*if (mq_unlink(MSGQ_NAME) == -1)
-                panic("Removing queue error");
-            
-            debug_msg.str("");
-            debug_msg << "[CLS::sigHandler] closing...";
-            DEBUG_MSG(debug_msg.str().c_str());*/
+            //pthread_mutex_unlock(&myPtr->mutexAlert);
+            pthread_mutex_unlock(&myPtr->mutexSoundMsg); 
+            cout << "SIGUSR2 received!" << endl;
             break;
             //exit(0);
+        case SIGINT:
+            //close msg queue
+            exit(0);
         default:
-            /*debug_msg.str("");
-            debug_msg << "[CLS::sigHandler] caught unexpected signal";
-            DEBUG_MSG(debug_msg.str().c_str());*/
+        break;
     }
-    pthread_mutex_unlock(&myPtr->mutexSoundMsg);
+    //pthread_mutex_unlock(&myPtr->mutexSoundMsg);
 }
   
 
 void* CLocalSystem::BluetTransmission(void *arg)
 {
-
+    CLocalSystem *ptr = reinterpret_cast<CLocalSystem*>(arg);
     while(1)
     {
 
@@ -109,17 +113,20 @@ void* CLocalSystem::BluetTransmission(void *arg)
  
 void* CLocalSystem::Alert(void *arg)
 {
-    while(1)
+    CLocalSystem *ptr = reinterpret_cast<CLocalSystem*>(arg);
+    while(ptr)  //while CLocalSystem object exists
     {
         
         //mutex associated to the condition variable to avoid race conditions
-        pthread_mutex_lock(&myPtr->mutexSoundMsg);   //mutex associated to soundMsg var
-        
-        pthread_cond_wait(&myPtr->condSoundMsg,&myPtr->mutexSoundMsg);
+        //pthread_mutex_lock(&ptr->mutexAlert);
+        pthread_mutex_lock(&ptr->mutexSoundMsg);   //mutex associated to soundMsg var
+        pthread_cond_wait(&ptr->condSoundMsg,&ptr->mutexSoundMsg);
+        cout << "ALERT received!" << endl;
         //unclock the mutex associated to the condition variable to avoid race conditions
-        myPtr->m_speaker.setAlarm(myPtr->soundMsg);  //breaks when sound msg is finisg
-        pthread_mutex_unlock(&myPtr->mutexSoundMsg);
+        ptr->m_speaker.setAlarm(ptr->soundMsg);  //breaks when sound msg is finisg
+        pthread_mutex_unlock(&ptr->mutexSoundMsg);
+        //pthread_mutex_unlock(&ptr->mutexAlert);
     }
-
+    return 0;
 }
  
