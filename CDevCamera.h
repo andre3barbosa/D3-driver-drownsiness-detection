@@ -2,16 +2,16 @@
 #define __CDEVCAMERA_H__
 
 //opencv library
-
-#include <string.h>
 //define frame width and heigth
 //define CAM settings
-using namespace std;
+//using namespace std;
+#include<string>
+
 
 class CDevCamera
 {
 public:
-    CDevCamera(string);
+    CDevCamera(std::string name);
     ~CDevCamera();
 
     bool open();
@@ -20,8 +20,8 @@ public:
     bool frameCapture();
 
 private:
-    string devPath; 
-    //VideoCapture m_capture;
+    std::string devName; 
+    //VideoCapture xx;
     //MAT
 };
 
