@@ -127,6 +127,9 @@ int CDrowsinessCam::EARcalculation()
         // // file << "\n";
         // // file.close();  
         
+
+        for(int i = 29; i > 0; i--)
+            classInput[i] = classInput[i-1];
         classInput[0] = (float)EAR;    
 
                 for (int i = 0; i < 30; i++) {
