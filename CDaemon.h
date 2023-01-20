@@ -8,6 +8,7 @@
 #include "CDevCamera.h"
 #include "CDevSensor.h"
 #include "CBluetoothCom.h"
+#include "CDrowsinessCam.h"
 
 
 
@@ -22,7 +23,8 @@ public:
 
 private:
 
-
+    //TO-DO ->define priorities
+    
 
 
     //objects from others classes
@@ -30,6 +32,7 @@ private:
     CDevSensor m_temperature;
     CDevSensor m_heartRate;
 
+    CDrowsinessCam m_drowCam;
     CBluetoothCom m_listenBlue;
 
     static CDaemon* myPtr; //use in static funciton member tim_handler
@@ -50,7 +53,12 @@ private:
     pthread_cond_t condReadSensors;    //signalize a sensores reading
 
 
-    mqd_t msgQueueSensors;   
+    mqd_t msgQueueSensors;
+    //msg queue responsible to share the
+    //destination mac address in bluetooth
+    //transmission
+    mqd_t msgQueueBluet;
+  
 
     /*Thread workers*/
     static void* CamProcess(void*);
@@ -64,7 +72,6 @@ private:
 
 
 
-   
 
 
 };

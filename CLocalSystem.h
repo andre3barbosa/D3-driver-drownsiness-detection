@@ -30,7 +30,7 @@ private:
  
     /*private Data member*/
     const CDevSound m_speaker;
-    const CBluetoothCom m_remoteConnection;
+    CBluetoothCom m_sendBlue;
 
 
     static CLocalSystem* myPtr;
@@ -44,6 +44,13 @@ private:
 
     /*Message queue to read the trip store during the trip*/
     mqd_t msgQueueSensors;
+    mqd_t msgQueueBluet;
+    struct mq_attr msgq_attr_sensors;
+    struct mq_attr msgq_attr_blue;
+    
+   
+   //variable to establish rfcomm protocol
+    //int s, client;
 
     int soundMsg;
 };
