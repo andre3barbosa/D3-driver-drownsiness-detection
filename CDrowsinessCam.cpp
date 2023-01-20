@@ -11,6 +11,7 @@
 using namespace std;
 using namespace cv;
 using namespace cv::face;
+using namespace cv::ml;
 
 CDrowsinessCam::CDrowsinessCam()
     :faceDetector("/usr/share/OpenCV/haarcascades/haarcascade_frontalface_alt2.xml"),
@@ -18,12 +19,13 @@ CDrowsinessCam::CDrowsinessCam()
     p2_p6_final(0.0), 
     p3_p5_final(0.0),
     p1_p4_final(0.0),
-    file(NULL)
+    file(NULL),
+    output_y(0.0)
 {
    // Load landmark detector
     facemark = FacemarkLBF::create();
     facemark->loadModel("/usr/share/OpenCV/lbfmodel.yaml");
-    
+    svm = SVM::load("/etc/D3/svm.xml");
 
     // for(i=0;i<30;i++)
     //     classInput[i]=0.0;
@@ -39,10 +41,8 @@ CDrowsinessCam::CDrowsinessCam()
     // this-> begin = std::chrono::steady_clock::now();
     
 
-        for(i=0;i<30;i++)
-            classInput[i]=0.0;
-
-
+    for(i=0;i<30;i++)
+        classInput[i]=0.0;
 
     cout << "begin" << endl;
     this-> begin = std::chrono::steady_clock::now();
@@ -127,23 +127,19 @@ int CDrowsinessCam::EARcalculation()
         // // file << "\n";
         // // file.close();  
         
-
-            for(int i = 29; i > 0; i--)
-            classInput[i] = classInput[i-1];
-        classInput[0] = EAR;    
-            // file.open("ear.csv",ios_base::out | ios_base::app);
-        
-        
-
+        classInput[0] = (float)EAR;    
 
                 for (int i = 0; i < 30; i++) {
                 //cout << classInput[i];
                     
-                    cout << classInput[i] << " , ";
-                    
+                     cout << classInput[i] << " , ";
+                    Mat input_x = (Mat_<float>(1,30) << classInput[i]);
+                    output_y = svm->predict(input_x);
+
                 }
 
-    
+        cout << output_y << endl;
+        
     
 }
 
