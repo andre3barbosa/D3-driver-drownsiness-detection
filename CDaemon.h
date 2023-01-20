@@ -11,7 +11,6 @@
 #include "CDrowsinessCam.h"
 
 
-
 class CDaemon
 {
 public:
@@ -23,8 +22,7 @@ public:
 
 private:
 
-    //TO-DO ->define priorities
-    
+
 
 
     //objects from others classes
@@ -53,12 +51,7 @@ private:
     pthread_cond_t condReadSensors;    //signalize a sensores reading
 
 
-    mqd_t msgQueueSensors;
-    //msg queue responsible to share the
-    //destination mac address in bluetooth
-    //transmission
-    mqd_t msgQueueBluet;
-  
+    mqd_t msgQueueSensors;   
 
     /*Thread workers*/
     static void* CamProcess(void*);
@@ -72,6 +65,7 @@ private:
 
 
 
+   
 
 
 };
