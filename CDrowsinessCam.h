@@ -3,14 +3,19 @@
 
 #include "/usr/include/opencv2/opencv.hpp"
 #include "/usr/include/opencv2/face.hpp"
+#include "/usr/include/opencv2/ml.hpp"
 
 #include <iostream>
 #include <fstream>
 
 
+#define MAX_FEAT 15
+#define NUM_NEXT_CLASS 4
+
 using namespace std;
 using namespace cv;
 using namespace cv::face;
+using namespace cv::ml;
 
 
 
@@ -27,11 +32,16 @@ private:
     Ptr<Facemark> facemark;
     Mat gray;
 
+    Ptr<SVM> svm;
+
+
+
+
     //para calculo do ear
     double p2_p6_final,  p3_p5_final,  p1_p4_final;
 
     int i;
-    double classInput[30];
+    float classInput[MAX_FEAT];
     ofstream file;
 
     int next_class;
@@ -47,9 +57,9 @@ public:
 
     
     bool processParameter(Mat frame);  //Obtain
-    int EARcalculation();  //calculate the value of EAR
+    float EARcalculation();  //calculate the value of EAR
 
-    bool checkDrowState();  //machine learning algorithm
+    int checkDrowState(float *);  //machine learning algorithm
 
 
 

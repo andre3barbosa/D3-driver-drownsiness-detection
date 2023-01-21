@@ -10,6 +10,9 @@
 #include "CBluetoothCom.h"
 #include "CDrowsinessCam.h"
 
+#include <chrono>
+
+#include<fstream>
 
 class CDaemon
 {
@@ -23,7 +26,8 @@ public:
 private:
 
 
-
+    std::chrono::steady_clock::time_point begin;
+    std::chrono::steady_clock::time_point end;
 
     //objects from others classes
     CDevCamera m_camera;
@@ -63,6 +67,15 @@ private:
     struct itimerval itv;
     static void timer_Handler(int sig); 
 
+
+    //Shared variable to store the ear values for classification
+    float classInput[30];
+
+    ofstream file;
+
+    int nextClass;
+
+    
 
 
    

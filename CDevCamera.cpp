@@ -8,6 +8,9 @@
 #define FRAME_W 		640
 #define FRAME_H 		480
 
+//#define FRAME_W 		426
+//#define FRAME_H 		240
+
 #define CAM_BRIGHTNESS	0.4  //-> 20
 #define CAM_CONTRAST	0.50 //-> 0
 #define CAM_SATURATION	0.6  //-> 10
@@ -25,12 +28,14 @@ CDevCamera::CDevCamera(string cameraName)
         :camName(cameraName)
 {
 
+
      /******** Camera Configurations **********/    
     camDev.set(CAP_PROP_FRAME_WIDTH , FRAME_W);
     camDev.set(CAP_PROP_FRAME_HEIGHT, FRAME_H);
     camDev.set(CAP_PROP_BRIGHTNESS, CAM_BRIGHTNESS);
     camDev.set(CAP_PROP_CONTRAST, CAM_CONTRAST);
     camDev.set(CAP_PROP_SATURATION, CAM_SATURATION);
+    camDev.set(CAP_PROP_FPS, 30);
 
     system("v4l2-ctl --set-ctrl=auto_exposure=0");
     system("v4l2-ctl --set-ctrl=iso_sensitivity=4");
@@ -41,6 +46,7 @@ CDevCamera::CDevCamera(string cameraName)
 
     system("v4l2-ctl --set-ctrl=sharpness=30");
 
+    this->open();
 
 }
 
@@ -66,7 +72,7 @@ Mat CDevCamera::frameCapture()
 {
     //Open camera device
     
-        this->open();
+    //this->open();
 
     //Checks if camera device opened?
         if (!camDev.isOpened())
@@ -75,12 +81,17 @@ Mat CDevCamera::frameCapture()
 
         camDev.read(frame);
         
+        
+        //cout << "frame"<<endl;
+        
             if(frame.empty())
                cerr << ("Camera no frames captured.\n");
 
-        imwrite(IMAGE_PATH, frame);
+        //imwrite(IMAGE_PATH, frame);
 
-        this->close();
+        //this->close();
+
+        resize(frame,frame,Size(),1.0/4,1.0/4);
         
         
 

@@ -13,7 +13,7 @@ using namespace cv;
 #define TIM_VAL_SEC     1
 #define TIM_VAL_US      0
 
-#define IMAGE_PATH  ("/etc/frames/frame.jpg")
+#define IMAGE_PATH  ("/root/frame.jpg")
 
 CDaemon::CDaemon()
     :m_camera("camName"),
@@ -24,6 +24,16 @@ CDaemon::CDaemon()
     this->itv.it_interval.tv_usec = TIM_INTV_US;
     this->itv.it_value.tv_sec = TIM_VAL_SEC;
     this->itv.it_value.tv_usec = TIM_VAL_US;
+
+    nextClass = 9;
+    for(int i=0;i<30;i++)
+        classInput[i]=0.0;
+
+
+    file.open("d3.txt",ios_base::app);
+
+    begin = std::chrono::steady_clock::now();
+
 }
 CDaemon::~CDaemon()
 {
@@ -45,7 +55,19 @@ void CDaemon::init()
     //pthread_create(&T_BluetTransmission_id, NULL, BluetTransmission, this);
     //pthread_create(&T_SecondarySensor_id, NULL, SecondarySensor, this);
 
+    // cpu_set_t cpuset;
+    // CPU_ZERO(&cpuset);
+    // CPU_SET(4,&cpuset);
+
     pthread_create(&T_CamCapture_id, NULL, CamCapture, this);
+    //pthread_create(&T_CamProcess_id, NULL, CamProcess, this);
+    /*int result = pthread_setaffinity_np(T_CamCapture_id,sizeof(cpu_set_t),&cpuset);
+
+    if(!result)
+    {
+        cout << "Criou" <<endl;
+    }*/
+
 
 }
 
@@ -59,24 +81,69 @@ void CDaemon::run()
     //pthread_join(T_BluetTransmission_id, NULL);
     //pthread_join(T_SecondarySensor_id, NULL);
     pthread_join(T_CamCapture_id, NULL);
+    //pthread_join(T_CamProcess_id, NULL);
 }
 
 
 /*Thread workers*/
-void* CDaemon::CamProcess(void*)
+void* CDaemon::CamProcess(void* arg)
 {
+
+
+    CDaemon *ptr = reinterpret_cast<CDaemon*>(arg);
+
+    while(1){
+
+        pthread_mutex_lock(&ptr->mutexEARshared);
+        
+        pthread_cond_wait(&ptr->condEARclass, &ptr->mutexEARshared);
+        //cout << "[CamProcess] Classification realized"<<endl;
+        /* Analyze the EAR values to make a prediction*/
+        //ptr->m_drowCam.checkDrowState(ptr->classInput);
+        pthread_mutex_unlock(&ptr->mutexEARshared);
+    }
+
 
 }
 void* CDaemon::CamCapture(void* arg)
 {
     CDaemon *ptr = reinterpret_cast<CDaemon*>(arg);
     Mat tempFrame;
+    
 
     while (1)
     {   
+        
+        ptr-> end = std::chrono::steady_clock::now();
+        ptr->file << "[Time] Value: "<<std::chrono::duration_cast<std::chrono::microseconds>(ptr->end - ptr->begin).count() << endl;
+
+        ptr-> begin = std::chrono::steady_clock::now();
         tempFrame = ptr->m_camera.frameCapture();
+
+
         ptr->m_drowCam.processParameter(tempFrame);
         ptr->m_drowCam.EARcalculation();
+        //update the shared variable with the next value EAR
+        /*pthread_mutex_lock(&ptr->mutexEARshared);
+            for(int i = 29; i > 0; i--)
+            {
+                ptr->classInput[i] = ptr->classInput[i-1];
+            }
+            ptr->classInput[0] = ptr->m_drowCam.EARcalculation();
+
+            cout << ptr->classInput[0] <<endl;        
+        //ptr->m_drowCam.EARcalculation();
+        //cout << "[CamCapture] EAR calculated" <<endl;
+                //cout << nextClass <<endl;
+        pthread_mutex_unlock(&ptr->mutexEARshared);
+        ptr->file << "Value:" << ptr->nextClass << endl;
+        if((ptr->nextClass--) == 0)
+        {
+            //cout << "[CamCapture] throw cond signal" <<endl;
+            pthread_cond_signal(&ptr->condEARclass);
+            //cout << "A" <<endl;
+            ptr->nextClass = 9;
+        }*/
     
     }
     
