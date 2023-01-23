@@ -25,31 +25,20 @@ CDrowsinessCam::CDrowsinessCam()
    // Load landmark detector
     facemark = FacemarkLBF::create();
     facemark->loadModel("/usr/share/OpenCV/lbfmodel.yaml");
-    //svm = SVM::load("/root/svm.xml");
-    //float input = {0.0};
-    //Mat input_x = Mat(1, 30, CV_32F, input);
-    //svm->predict(input_x);
-    //this-> begin = std::chrono::steady_clock::now();
-    // for(i=0;i<30;i++)
-    //     classInput[i]=0.0;
-
-    if(!file){
-        file.open("ear.csv",ios_base::out);
-        file << "\n";
-        file.close();
-    }
+    svm = SVM::load("/root/svm.xml");
 
     next_class = NUM_NEXT_CLASS;
-    // cout << "begin" << endl;
-    // this-> begin = std::chrono::steady_clock::now();
-    
+
 
     for(i=0;i<MAX_FEAT;i++)
         classInput[i]=0.0;
 
+
+    long_blinks = 0;
+    total_blinks = 180;
+    short_blinks = 180;
+    consecutive_long_blinks = 0;
     cout << "begin" << endl;
-    this-> begin = std::chrono::steady_clock::now();
-    //file.open("ear.txt",ios_base::app);
 
 }
 CDrowsinessCam::~CDrowsinessCam()
@@ -95,172 +84,95 @@ bool CDrowsinessCam::processParameter(Mat frame)
 
 
 float CDrowsinessCam::EARcalculation()
-{
-         
-    double EAR= (p2_p6_final +  p3_p5_final)/(2* p1_p4_final);
+{     
+    double EAR = (p2_p6_final +  p3_p5_final)/(2* p1_p4_final);  
     
-    cout<<EAR<<endl;
-    
-        for(int i = (MAX_FEAT - 1); i > 0; i--)
-            classInput[i] = classInput[i-1];
-        classInput[0] = EAR;    
-        //     // file.open("ear.csv",ios_base::out | ios_base::app);
-        
-        
-        if((next_class--)==0){
-                this-> end = std::chrono::steady_clock::now();
-
-                file.open("ear.csv",ios_base::app);
-                
-                file << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << ", ";
-
-
-                for (int i = 0; i < MAX_FEAT; i++) {
-                //cout << classInput[i];
-                    
-                    file << classInput[i] << " , ";
-                    //cout << classInput[i] << " , ";
-                }
-                //cout << "\n";
-                file << "\n";
-                file.close();
-
-                next_class = NUM_NEXT_CLASS;
-        }
-            
-        // file << "\n";
-        // file.close();  
-        
-
-   
-
-                /*for (int i = 0; i < 30; i++) {
-                //cout << classInput[i];
-                    
-                     cout << classInput[i] << " , ";
-                    Mat input_x = (Mat_<float>(1,30) << classInput[i]);
-                    output_y = svm->predict(input_x);
-
-                }*/
-
-        //cout << EAR << endl;
-        
-        //file << EAR << endl;        
-        /*this-> end = std::chrono::steady_clock::now();
-        file << "[Time] Value: "<<std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << endl;
-        this-> begin = std::chrono::steady_clock::now();
-        file << EAR << endl;
-        return (float)EAR;*/
-    
+    return (float)EAR; 
 }
 
-int CDrowsinessCam::checkDrowState(float* input)
+bool CDrowsinessCam::checkDrowState(float* input)
 {
-    //this-> begin = std::chrono::steady_clock::now();
     Mat input_x = Mat(1, MAX_FEAT, CV_32F, input);
-    file << input_x << endl;
     int output_y = svm->predict(input_x);
-    //this-> end = std::chrono::steady_clock::now();
+    
+    // takes true value for alarm, and false value doesn't alarm
+    bool alert_var = 0;
 
-    //file << "[Time] Value: "<< std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<"[Output] Value: " << output_y <<endl;
+    cout << output_y << endl;
 
-    //cout << output_y << endl;
+    //rule verification
+    // Update blink count
+        if (output_y == 2) {
+            long_blinks++;
+            consecutive_long_blinks++;
+        }else if(output_y == 1){
+            short_blinks++;
+            consecutive_long_blinks = 0;
+        }else{
+            consecutive_long_blinks = 0;
+        }
+        total_blinks++;
 
-    //file << "[checkDrowState] Value: " << output_y << endl;
+        // Add blink to the queue
+        blink_queue.push_back(output_y);
 
+        // Check if queue size is greater than 60
+        if (blink_queue.size() > 180) {
+            // Remove oldest blink from the queue
+            int oldest_blink = blink_queue.front();
+            blink_queue.pop_front();
 
-    return output_y;
+            // Check if oldest blink was a long blink
+            if (oldest_blink == 2) {
+                long_blinks--;
+                consecutive_long_blinks--;
+            }else if(oldest_blink == 1){
+                short_blinks--;
+            }
+            total_blinks--;
+        }
 
+        // Calculate proportion of long blinks
+        double proportion = (double)long_blinks / total_blinks;
+
+        // Check if proportion is higher than 25%
+        //in the first 60 seconds don't made
+
+        if (proportion > 0.25) {
+            std::cout << "sleep" << std::endl;
+            alert_var = true;
+        }else{
+            //std::cout << "wake" << std::endl;
+            alert_var = false;
+        }
+
+        if (consecutive_long_blinks >= 4) {
+            std::cout << "ALERTA 5 or more consecutive long blinks in the last 60 values." << std::endl;
+            alert_var = true;
+        }
+
+    return alert_var;
 }
-
-
-
-// drawPolyLine draws a poly line by joining 
-// successive points between the start and end indices. 
-void CDrowsinessCam::drawPolyline( Mat &frame, const vector<Point2f> &landmarks,
-  const int start,
-  const int end,
-  bool isClosed
-)
-{ 
-    // Gather all points between the start and end indices
-    // vector <Point> points;
-
-    // for (int i = start; i <= end; i++){
-    //     points.push_back(cv::Point(landmarks[i].x, landmarks[i].y));
-    // }
-    // Draw polylines. 
-    //polylines(image, points, isClosed, COLOR, 3, 16);    
-
-    //Face landmarks
-
-    //EAR (eye aspect ratio)
-
-        //p2-p6
-        double p2_p6_x = landmarks[37].x  - landmarks[41].x; 
-        double p2_p6_y=  landmarks[37].y -landmarks[41].y ;
-
-        this->p2_p6_final=sqrt((p2_p6_x * p2_p6_x) + (p2_p6_y * p2_p6_y));
-
-        //p3-p5
-        double p3_p5_x = landmarks[38].x - landmarks[40].x;
-        double p3_p5_y = landmarks[38].y - landmarks[40].y;
-
-        this->p3_p5_final=sqrt((p3_p5_x * p3_p5_x) + (p3_p5_y * p3_p5_y));
-
-
-        //p1-p4
-        double p1_p4_x = landmarks[36].x - landmarks[39].x;  
-        double p1_p4_y = landmarks[36].y - landmarks[39].y;
-
-        this->p1_p4_final=sqrt((p1_p4_x * p1_p4_x) + (p1_p4_y * p1_p4_y));
-
-        //this->EARcalculation(); 
-        //double EAR= (p2_p6_final +  p3_p5_final)/(2* p1_p4_final);
-        //file << EAR << endl; 
-}
-
 
 void CDrowsinessCam::renderFace(cv::Mat &frame, vector<Point2f> &landmarks)
 {
-    
-// //right eye
-//     drawPolyline(frame, landmarks, 36, 36, true); //37  p1
-//     drawPolyline(frame, landmarks, 37, 37, true); //38  p2
-//     drawPolyline(frame, landmarks, 38, 38, true); //39  p3
-//     drawPolyline(frame, landmarks, 39, 39, true); //40  p4
-//     drawPolyline(frame, landmarks, 40, 40, true); //41  p5
-//     drawPolyline(frame, landmarks, 41, 41, true); //42  p6
+    double p2_p6_x = landmarks[37].x  - landmarks[41].x; 
+    double p2_p6_y=  landmarks[37].y -landmarks[41].y ;
 
-// //left eye
-//     drawPolyline(frame, landmarks, 42, 42, true); //43  
-//     drawPolyline(frame, landmarks, 43, 43, true); //44
-//     drawPolyline(frame, landmarks, 44, 44, true); //45
-//     drawPolyline(frame, landmarks, 45, 45, true); //46
-//     drawPolyline(frame, landmarks, 46, 46, true); //47
-//     drawPolyline(frame, landmarks, 47, 47, true); //48 
+    this->p2_p6_final=sqrt((p2_p6_x * p2_p6_x) + (p2_p6_y * p2_p6_y));
 
-//right eye
-    //drawPolyline(frame, landmarks, 36, 41, true); //37  p1
+    //p3-p5
+    double p3_p5_x = landmarks[38].x - landmarks[40].x;
+    double p3_p5_y = landmarks[38].y - landmarks[40].y;
+
+    this->p3_p5_final=sqrt((p3_p5_x * p3_p5_x) + (p3_p5_y * p3_p5_y));
 
 
-        double p2_p6_x = landmarks[37].x  - landmarks[41].x; 
-        double p2_p6_y=  landmarks[37].y -landmarks[41].y ;
+    //p1-p4
+    double p1_p4_x = landmarks[36].x - landmarks[39].x;  
+    double p1_p4_y = landmarks[36].y - landmarks[39].y;
 
-        this->p2_p6_final=sqrt((p2_p6_x * p2_p6_x) + (p2_p6_y * p2_p6_y));
-
-        //p3-p5
-        double p3_p5_x = landmarks[38].x - landmarks[40].x;
-        double p3_p5_y = landmarks[38].y - landmarks[40].y;
-
-        this->p3_p5_final=sqrt((p3_p5_x * p3_p5_x) + (p3_p5_y * p3_p5_y));
-
-
-        //p1-p4
-        double p1_p4_x = landmarks[36].x - landmarks[39].x;  
-        double p1_p4_y = landmarks[36].y - landmarks[39].y;
-
-        this->p1_p4_final=sqrt((p1_p4_x * p1_p4_x) + (p1_p4_y * p1_p4_y));
+    this->p1_p4_final=sqrt((p1_p4_x * p1_p4_x) + (p1_p4_y * p1_p4_y));
 
 }
 

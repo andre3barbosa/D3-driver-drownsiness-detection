@@ -8,6 +8,8 @@
 #include <iostream>
 #include <fstream>
 
+#include <deque>
+
 
 #define MAX_FEAT 15
 #define NUM_NEXT_CLASS 4
@@ -34,7 +36,12 @@ private:
 
     Ptr<SVM> svm;
 
-
+    //Rule variables
+    int long_blinks;
+    int total_blinks;
+    int short_blinks;
+    int consecutive_long_blinks;
+    std::deque<int> blink_queue;
 
 
     //para calculo do ear
@@ -59,7 +66,7 @@ public:
     bool processParameter(Mat frame);  //Obtain
     float EARcalculation();  //calculate the value of EAR
 
-    int checkDrowState(float *);  //machine learning algorithm
+    bool checkDrowState(float *);  //machine learning algorithm
 
 
 
