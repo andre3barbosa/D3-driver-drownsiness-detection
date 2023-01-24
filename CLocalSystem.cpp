@@ -10,6 +10,7 @@
 
 using namespace std;
 
+#define MSGQ_PID        "/msgQueuePid"
 #define MSGQ_BLUET      "/msgQueueBluet"
 #define MSGQ_SENSORS    "/msgQueueSensors"
 
@@ -38,7 +39,13 @@ CLocalSystem::CLocalSystem()  //member-initializer list
     {
         std::cerr << "[CLocalSystem]: Creating sensors message queue\n";
         exit(1);
-    }  
+    }
+    this->msgQueuePid = mq_open(MSGQ_PID, O_WRONLY, NULL);
+    if(this->msgQueuePid == (mqd_t)-1)
+    {
+        std::cerr << "CLS::CLocalSystem(): Creating Pid message queue";
+        exit(1);
+    } 
 }
 //
 CLocalSystem::~CLocalSystem()
@@ -53,11 +60,32 @@ void CLocalSystem::init()
 //define the priority and attributes of each thread
 // open the msg queue
     //mq_open(&msgQueueSensors);
+    signal(SIGUSR1, signal_Handler);    //camera alert signal
+    signal(SIGUSR2, signal_Handler);    //secondary sensors advice signal
+    signal(SIGINT, signal_Handler);
+    int error;
+    char pid[5];
+    int pid_aux = getpid();
+    cout << "PID: " << pid_aux << endl;
+    sprintf(pid, "%d", pid_aux);
+    error = mq_send(this->msgQueuePid, pid, 6, 1);
+    if(error == -1)
+    { 
+        error = errno;
+        if(error != EAGAIN)
+            std::cerr << "In mq_send()";
+    }
+    else{
+        cout << "SEND pid to msgqueue" << endl;
+    }
+
+    
+
     pthread_mutex_init(&mutexSoundMsg, NULL);
     pthread_cond_init(&condSoundMsg, NULL);
 
-    pthread_create(&T_BluetTransmission_id, NULL, BluetTransmission, this);
-    pthread_create(&T_Alert_id, NULL, Alert, this);
+    //pthread_create(&T_BluetTransmission_id, NULL, BluetTransmission, this);
+    //pthread_create(&T_Alert_id, NULL, Alert, this);
 }
  
 void CLocalSystem::run()
@@ -67,8 +95,8 @@ void CLocalSystem::run()
     signal(SIGUSR1, signal_Handler);    //camera alert signal
     signal(SIGUSR2, signal_Handler);    //secondary sensors advice signal
     signal(SIGINT, signal_Handler);
-    pthread_join(T_BluetTransmission_id, NULL);
-    pthread_join(T_Alert_id, NULL);
+    //pthread_join(T_BluetTransmission_id, NULL);
+    //pthread_join(T_Alert_id, NULL);
 }
 
  

@@ -45,9 +45,9 @@ private:
     /*Message queue to read the trip store during the trip*/
     mqd_t msgQueueSensors;
     mqd_t msgQueueBluet;
+    mqd_t msgQueuePid;
     struct mq_attr msgq_attr_sensors;
     struct mq_attr msgq_attr_blue;
-    
    
    //variable to establish rfcomm protocol
     //int s, client;
