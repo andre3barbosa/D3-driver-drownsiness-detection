@@ -9,6 +9,11 @@
 #include "CDevSound.h"
 #include "CBluetoothCom.h"
 
+#include "/usr/include/opencv2/opencv.hpp"
+#include "/usr/include/opencv2/face.hpp"
+
+using namespace cv;
+using namespace cv::face;
  
 class CLocalSystem 
 {
@@ -53,6 +58,10 @@ private:
     //int s, client;
 
     int soundMsg;
+
+    Ptr<Facemark> facemark;
+
+
 };
 // End C_LocalSystem class definition
  

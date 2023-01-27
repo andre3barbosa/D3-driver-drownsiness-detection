@@ -10,7 +10,7 @@
 #define __CDEVCAMERA_H__
 
 
-#include<string>
+#include <string>
 #include "/usr/include/opencv2/opencv.hpp"
 #include "/usr/include/opencv2/face.hpp"
    

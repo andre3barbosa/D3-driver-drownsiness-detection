@@ -5,12 +5,17 @@
 #include <mqueue.h>
 #include <sys/time.h>
 
+
 #include "CDevCamera.h"
 #include "CDevSensor.h"
 #include "CBluetoothCom.h"
 #include "CDrowsinessCam.h"
 
+#include <chrono>
 
+#include <signal.h>
+
+#include<fstream>
 
 class CDaemon
 {
@@ -23,9 +28,9 @@ public:
 
 private:
 
-    //TO-DO ->define priorities
-    
 
+    std::chrono::steady_clock::time_point begin;
+    std::chrono::steady_clock::time_point end;
 
     //objects from others classes
     CDevCamera m_camera;
@@ -51,7 +56,7 @@ private:
 
     pthread_mutex_t mutexReadSensors;  //associated to condReadSensors
     pthread_cond_t condReadSensors;    //signalize a sensores reading
-
+  
 
     mqd_t msgQueueSensors;
     //msg queue responsible to share the
@@ -62,7 +67,7 @@ private:
     mqd_t msgQueuePid;
 
     struct mq_attr msgq_attr_pid;
-  
+
 
     /*Thread workers*/
     static void* CamProcess(void*);
@@ -75,7 +80,15 @@ private:
     static void timer_Handler(int sig); 
 
 
+    //Shared variable to store the ear values for classification
+    float classInput[30];
+    ofstream file;
+    int nextClass;
 
+    bool tripStatus;
+
+
+   
 
 
 };

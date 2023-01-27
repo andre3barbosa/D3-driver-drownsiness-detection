@@ -52,5 +52,5 @@ int main(int argc, char *argv[])
     daemon.init();
     daemon.run();
     //while(1);
-    return 0;
+    exit(EXIT_SUCCESS);
 }

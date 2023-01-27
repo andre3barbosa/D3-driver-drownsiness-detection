@@ -1,4 +1,5 @@
 #include "CLocalSystem.h"
+#include "CDrowsinessCam.h"
 
 #include <signal.h>
 #include <iostream> //for debug purpose
@@ -7,8 +8,10 @@
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
+#include "/usr/include/opencv2/face.hpp"
 
 using namespace std;
+
 
 #define MSGQ_PID        "/msgQueuePid"
 #define MSGQ_BLUET      "/msgQueueBluet"
@@ -25,6 +28,10 @@ CLocalSystem::CLocalSystem()  //member-initializer list
     : m_speaker(),
     m_sendBlue()
 {
+    facemark = FacemarkLBF::create();
+    facemark->loadModel("/usr/share/OpenCV/lbfmodel.yaml");
+
+
     myPtr = this;
     //open bluetooth message queue in the x mode
     //and with null attributes
@@ -84,8 +91,8 @@ void CLocalSystem::init()
     pthread_mutex_init(&mutexSoundMsg, NULL);
     pthread_cond_init(&condSoundMsg, NULL);
 
-    //pthread_create(&T_BluetTransmission_id, NULL, BluetTransmission, this);
-    //pthread_create(&T_Alert_id, NULL, Alert, this);
+    pthread_create(&T_BluetTransmission_id, NULL, BluetTransmission, this);
+    pthread_create(&T_Alert_id, NULL, Alert, this);
 }
  
 void CLocalSystem::run()
@@ -95,61 +102,12 @@ void CLocalSystem::run()
     signal(SIGUSR1, signal_Handler);    //camera alert signal
     signal(SIGUSR2, signal_Handler);    //secondary sensors advice signal
     signal(SIGINT, signal_Handler);
-    //pthread_join(T_BluetTransmission_id, NULL);
-    //pthread_join(T_Alert_id, NULL);
+    pthread_join(T_BluetTransmission_id, NULL);
+    pthread_join(T_Alert_id, NULL);
 }
 
  
-void CLocalSystem::signal_Handler(int sig)
-{
-    
-    
-    switch(sig)
-    {
-        case SIGUSR1:      //secondary sensors signal
-            pthread_mutex_lock(&myPtr->mutexSoundMsg);        
-            myPtr->soundMsg = 1;
-            //cout << "SIGUSR1 received!" << endl;
 
-            //pthread_mutex_lock(&myPtr->mutexAlert);
-            pthread_cond_signal(&myPtr->condSoundMsg);
-            //pthread_cond_signal(&thisPtr->condRecvSensors);
-            pthread_mutex_unlock(&myPtr->mutexSoundMsg); 
-            //pthread_mutex_unlock(&myPtr->mutexAlert);*/
-            cout << "SIGUSR1 received!" << endl;
-            break;
- 
-        case SIGUSR2:      //camera signal
-            pthread_mutex_lock(&myPtr->mutexSoundMsg); 
-            myPtr->soundMsg = 2;
-            //pthread_mutex_lock(&myPtr->mutexSoundMsg); 
-            //cout << "SIGUSR2 received!" << endl;
-
-            //pthread_mutex_lock(&myPtr->mutexAlert);
-            pthread_cond_signal(&myPtr->condSoundMsg);
-            //pthread_mutex_unlock(&myPtr->mutexAlert);
-            pthread_mutex_unlock(&myPtr->mutexSoundMsg); 
-            cout << "SIGUSR2 received!" << endl;
-            break;
-            //exit(0);
-        case SIGINT:
-            //close the bluetooth message queue
-            //cout << "hi" << endl;
-            myPtr->m_sendBlue.exit();
-            mq_close(myPtr->msgQueueBluet);
-            mq_close(myPtr->msgQueueSensors);
-            // remove msgq from the system
-            if (mq_unlink(MSGQ_BLUET) == -1)
-                cerr << "Removing bt queue error" << endl;
-            if (mq_unlink(MSGQ_SENSORS) == -1)
-                cerr << "Removing sensors queue error" << endl;
-            exit(0);
-        default:
-        break;
-    }
-    //pthread_mutex_unlock(&myPtr->mutexSoundMsg);
-}
-  
 
 void* CLocalSystem::BluetTransmission(void *arg)
 {
@@ -286,10 +244,11 @@ void* CLocalSystem::BluetTransmission(void *arg)
 void* CLocalSystem::Alert(void *arg)
 {
     CLocalSystem *ptr = reinterpret_cast<CLocalSystem*>(arg);
-    while(ptr)  //while CLocalSystem object exists
+    while(1)  //while CLocalSystem object exists
     {
         //mutex associated to the condition variable to avoid race conditions
         //pthread_mutex_lock(&ptr->mutexAlert);
+        cout << "Before lock\n";
         pthread_mutex_lock(&ptr->mutexSoundMsg);   //mutex associated to soundMsg var
         pthread_cond_wait(&ptr->condSoundMsg,&ptr->mutexSoundMsg);
         cout << "ALERT received!" << endl;
@@ -301,4 +260,56 @@ void* CLocalSystem::Alert(void *arg)
     return 0;
 }
 
+void CLocalSystem::signal_Handler(int sig)
+{
+    
+    
+    switch(sig)
+    {
+        case SIGUSR1:      //secondary sensors signal
+            pthread_mutex_lock(&myPtr->mutexSoundMsg);        
+            myPtr->soundMsg = 1;
+            cout << "SIGUSR1 received!" << endl;
+
+            //pthread_mutex_lock(&myPtr->mutexAlert);
+            pthread_cond_signal(&myPtr->condSoundMsg);
+            //pthread_cond_signal(&thisPtr->condRecvSensors);
+            pthread_mutex_unlock(&myPtr->mutexSoundMsg); 
+            //pthread_mutex_unlock(&myPtr->mutexAlert);*/
+            cout << "SIGUSR1 out received!" << endl;
+            break;
  
+        case SIGUSR2:      //camera signal
+            pthread_mutex_lock(&myPtr->mutexSoundMsg); 
+            myPtr->soundMsg = 2;
+            //pthread_mutex_lock(&myPtr->mutexSoundMsg); 
+            //cout << "SIGUSR2 received!" << endl;
+
+            //pthread_mutex_lock(&myPtr->mutexAlert);
+            pthread_cond_signal(&myPtr->condSoundMsg);
+            //pthread_mutex_unlock(&myPtr->mutexAlert);
+            pthread_mutex_unlock(&myPtr->mutexSoundMsg); 
+            cout << "SIGUSR2 received!" << endl;
+            break;
+            //exit(0);
+        case SIGINT:
+            //close the bluetooth message queue
+            //cout << "hi" << endl;
+            myPtr->m_sendBlue.exit();
+            mq_close(myPtr->msgQueueBluet);
+            mq_close(myPtr->msgQueueSensors);
+            mq_close(myPtr->msgQueuePid);
+            // remove msgq from the system
+            if (mq_unlink(MSGQ_BLUET) == -1)
+                cerr << "Removing bt queue error" << endl;
+            if (mq_unlink(MSGQ_SENSORS) == -1)
+                cerr << "Removing sensors queue error" << endl;
+            if (mq_unlink(MSGQ_PID) == -1)
+                cerr << "Removing PID queue error" << endl;
+            exit(0);
+        default:
+        break;
+    }
+    //pthread_mutex_unlock(&myPtr->mutexSoundMsg);
+}
+  

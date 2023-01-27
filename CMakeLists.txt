@@ -7,7 +7,7 @@
 
 
 cmake_minimum_required(VERSION 3.22.1)
-project( facev2 LANGUAGES CXX)
+project( CLocalSystem LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED on)
 
@@ -19,7 +19,8 @@ set(CMAKE_CXX_COMPILER "/home/andre/buildroot-2021.08/output/host/bin/arm-buildr
 set(CMAKE_CC_COMPILER "/home/andre/buildroot-2021.08/output/host/bin/arm-buildroot-linux-uclibcgnueabihf-gcc")
 
 # bin files to bin dir
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # OpenCv include DIRs
 set(OpenCV_INCLUDE_DIRS "/usr/include/opencv2")
@@ -43,7 +44,10 @@ file(GLOB all_SRCS
    "${CMAKE_CURRENT_SOURCE_DIR}/../src/*.cpp"
 )
 
-# Main
-add_executable( facev2.elf facev2.cpp ${all_SRCS} ) 
-target_link_libraries( facev2.elf ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_CXX_FLAGS} -lbcm2835 )
+# daemon process
+# add_executable( dSensor.elf CDaemon.cpp CDevCamera.cpp CDrowsinessCam.cpp CBluetoothCom.cpp CDevSensor.cpp dAcquisition.cpp ${all_SRCS} ) 
+# target_link_libraries( dSensor.elf ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_CXX_FLAGS} -lbluetooth)
 
+# main process
+add_executable( d3.elf localmain.cpp CLocalSystem.cpp CBluetoothCom.cpp CDevSound.cpp ${all_SRCS} ) 
+target_link_libraries( d3.elf ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} ${CMAKE_CXX_FLAGS} -lbluetooth)

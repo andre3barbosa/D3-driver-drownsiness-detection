@@ -7,9 +7,10 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 
-#define READ_CHANNEL 1
-
 using namespace std;
+using namespace cv;
+    
+#define READ_CHANNEL 1
 
 //Timer configuration
 #define TIM_INTV_SEC    60*5  //5 minutes period
@@ -17,25 +18,24 @@ using namespace std;
 #define TIM_VAL_SEC     1
 #define TIM_VAL_US      0
 
+#define IMAGE_PATH  ("/root/frame.jpg")
+
 #define MSGQ_PID        "/msgQueuePid"
 #define MSGQ_BLUET      "/msgQueueBluet"
 #define MSGQ_SENSORS    "/msgQueueSensors"
 
-CDaemon* CDaemon::myPtr = NULL;
 
 CDaemon::CDaemon()
-    :m_camera("devCam"),
+    :m_camera("camName"),
     m_temperature("devTemp"),
-    m_heartRate("devHR"),
-    m_listenBlue(),
-    m_drowCam()
+    m_heartRate("devHR")
 {
     this->itv.it_interval.tv_sec = TIM_INTV_SEC;
     this->itv.it_interval.tv_usec = TIM_INTV_US;
     this->itv.it_value.tv_sec = TIM_VAL_SEC;
     this->itv.it_value.tv_usec = TIM_VAL_US;
 
-    //open bluetooth message queue in the x mode
+        //open bluetooth message queue in the x mode
     //and with null attributes
     this->msgQueueBluet = mq_open(MSGQ_BLUET, O_WRONLY | O_CREAT | O_EXCL, S_IRWXG | S_IRWXG, NULL);
     if(this->msgQueueBluet == (mqd_t)-1)
@@ -54,7 +54,21 @@ CDaemon::CDaemon()
     {
         std::cerr << "CLS::CLocalSystem(): Creating Pid message queue";
         exit(1);
-    }  
+    }
+
+    nextClass = 4;
+    for(int i=0;i<15;i++)
+        classInput[i]=0.0;
+
+
+    // system("insmod led.ko");
+    system("echo none >/sys/class/leds/led0/trigger");
+
+    //file.open("d3.txt",ios_base::app);
+
+
+    this->tripStatus = false;
+    //begin = std::chrono::steady_clock::now();
 
 }
 CDaemon::~CDaemon()
@@ -74,32 +88,43 @@ void CDaemon::init()
     pthread_cond_init(&condEARclass, NULL);
     pthread_cond_init(&condReadSensors, NULL);
 
-    //pthread_create(&T_BluetTransmission_id, NULL, BluetTransmission, this);
+    pthread_create(&T_BluetListening_id, NULL, BluetListening, this);
     //pthread_create(&T_SecondarySensor_id, NULL, SecondarySensor, this);
-    //pthread_create(&T_BluetListening_id, NULL, BluetListening, this);
+
+    // cpu_set_t cpuset;
+    // CPU_ZERO(&cpuset);
+    // CPU_SET(4,&cpuset);
+
+    pthread_create(&T_CamCapture_id, NULL, CamCapture, this);
     pthread_create(&T_CamProcess_id, NULL, CamProcess, this);
-    //this->m_listenBlue.init();
+     //int result = pthread_setaffinity_np(T_CamCapture_id,sizeof(cpu_set_t),&cpuset);
+
+
 }
 
 void CDaemon::run()
 {
     //set timer
-    setitimer(ITIMER_REAL, &itv, NULL);
-    // set signal handler for periodic sensors reading
-    signal(SIGALRM, timer_Handler);
+        setitimer(ITIMER_REAL, &itv, NULL);
+    //set signal handler for periodic sensors reading
+        signal(SIGALRM, timer_Handler);
     signal(SIGINT, timer_Handler);
-    //pthread_join(T_BluetTransmission_id, NULL);
+ 
+    pthread_join(T_BluetListening_id, NULL);
     //pthread_join(T_SecondarySensor_id, NULL);
-    //pthread_join(T_CamCapture_id, NULL);
+    pthread_join(T_CamCapture_id, NULL);
     pthread_join(T_CamProcess_id, NULL);
-    //pthread_join(T_BluetListening_id, NULL);
 }
 
 
 /*Thread workers*/
 void* CDaemon::CamProcess(void* arg)
-{    
+{
+
+
     CDaemon *ptr = reinterpret_cast<CDaemon*>(arg);
+    bool alarmValue = false;
+
     int error;
     char msg[10000];
     int localPid;
@@ -124,50 +149,60 @@ void* CDaemon::CamProcess(void* arg)
         localPid = stoi(msg);
         cout << "[MSGQUEUEBLUET] Msg received:" << localPid <<endl;
     }
-    
-    //boolean variable assume true if drwosiness
-    //is detected and an signal needs to sent
-    bool drowDetected = 1;
-    kill(localPid,SIGUSR1);
-    while(1)
-    {
-        pthread_mutex_lock(&ptr->mutexEARclass);                    //mutex associated to soundMsg var
-        kill(localPid,SIGUSR1);
-        pthread_cond_wait(&ptr->condEARclass,&ptr->mutexEARclass); 
 
+
+    while(1){
+
+        pthread_mutex_lock(&ptr->mutexEARshared);
         
-
-        //Mat mat = Mat(1, 30, CV_32F, data);
-        drowDetected = ptr->m_drowCam.checkDrowState();
-        //ptr->m_drowCam.
-        //TO-DO -> how to implement the rule number 1? with timer?
-        if(drowDetected)
+        pthread_cond_wait(&ptr->condEARclass, &ptr->mutexEARshared);
+        //cout << "[CamProcess] Classification realized"<<endl;
+        /* Analyze the EAR values to make a prediction*/
+        alarmValue = ptr->m_drowCam.checkDrowState(ptr->classInput);
+        pthread_mutex_unlock(&ptr->mutexEARshared);
+        if(alarmValue)
         {
-            //kill(localPid,SIGUSR1);
-            //emit a signal to the process PID xx
-            //kill(pid,SIGUSR1);
-            drowDetected = 0;
+            //emit linux signal SIGUSER1
+            kill(localPid,SIGUSR1);
         }
-
-        pthread_mutex_unlock(&ptr->mutexEARclass);
     }
 }
-// This thread is responsable to capture a camera
-//frame
-
 void* CDaemon::CamCapture(void* arg)
 {
     CDaemon *ptr = reinterpret_cast<CDaemon*>(arg);
-
-    //MAT frame = ptr->m_camera.frameCapture();
-
-    //ptr->m_drowCam.processParameter(frame);
+    Mat tempFrame;
     
-    //ptr->m_drowCam.EARcalculation();
 
-    //m_camera.frameCapture();
+    while (1)
+    {   
+        // ptr-> end = std::chrono::steady_clock::now();
+        // ptr->file << "[Time] Value: "<<std::chrono::duration_cast<std::chrono::microseconds>(ptr->end - ptr->begin).count() << endl;
 
+        // ptr-> begin = std::chrono::steady_clock::now();
+        if(ptr->tripStatus)
+        {
+            tempFrame = ptr->m_camera.frameCapture();
+            ptr->m_drowCam.processParameter(tempFrame);
 
+            pthread_mutex_lock(&ptr->mutexEARshared);
+                for(int i = MAX_FEAT - 1; i > 0; i--)
+                {
+                    ptr->classInput[i] = ptr->classInput[i-1];
+                }
+                ptr->classInput[0] = ptr->m_drowCam.EARcalculation();
+
+            pthread_mutex_unlock(&ptr->mutexEARshared);
+            
+            if((ptr->nextClass--) == 0)
+            {
+                pthread_cond_signal(&ptr->condEARclass);
+
+                ptr->nextClass = NUM_NEXT_CLASS;
+            }
+        }
+    
+    }
+    
 }
 void* CDaemon::BluetListening(void* arg)
 {
@@ -261,7 +296,10 @@ void* CDaemon::BluetListening(void* arg)
                          cout << "Value: [" << buf <<"]" <<endl;
                         // close(ptr->s);
                         //exit(1);
-                        //TO-DO Led on
+                        ptr->tripStatus = true;
+                        //Turn led on when trip starts
+                        system("echo 1 > /dev/led0");
+
                     break;
                 case 'T':
                     /*Get the data stored during the trip*/
@@ -280,8 +318,9 @@ void* CDaemon::BluetListening(void* arg)
                         }
                     } while(error == EAGAIN);
 
-                    //TO-DO led off
-
+                    //Turn led off when trip stops
+                    system("echo 0 > /dev/led0");
+                    ptr->tripStatus = false;
                     
                     cout << "[recvBlut] T command receiveid" << endl;
                     break;
@@ -296,7 +335,6 @@ void* CDaemon::BluetListening(void* arg)
         //close(ptr->client);
     }       
 }
-
 void* CDaemon::SecondarySensor(void*)
 {
     while(1);
@@ -323,6 +361,9 @@ void CDaemon::timer_Handler(int sig)
         //     cerr << "Removing sensors queue error" << endl;
         //myPtr->m_listenBlue.exit();
         
+        //Removes led device driver
+        system("rmmod led.ko");
+
         //successful termination
         exit(0);
     }
