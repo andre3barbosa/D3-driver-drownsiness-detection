@@ -1,11 +1,12 @@
 #include "CDevSound.h"
+#include <unistd.h>
 
 using namespace std;
  
 
  CDevSound::CDevSound()
- {
- }
+{
+}
 
  CDevSound::~CDevSound()
  {
@@ -18,11 +19,11 @@ using namespace std;
     switch(SoundMsg)
     {
         case 1:
-            //system("aplay -q Alert.wav >/dev/null 2>&1 ");  //play alert msg
-            system("aplay -q Alert.wav");  //play alert msg
-            system("kill $!");
-            cout << "Sound msg 1!" << endl;
+            system("timeout 3 aplay -q DetectDrowsiness.wav");  //play alert msg
+            cout << "After system" << endl;
+
             break;
+        
         case 2:
             //system("aplay Alert.wav >/dev/null 2>&1");  //play advice msg
             cout << "Sound msg 2!" << endl;

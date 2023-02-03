@@ -63,6 +63,7 @@ public:
     CDrowsinessCam();
     ~CDrowsinessCam();
 
+    void init();
 
     
     bool processParameter(Mat frame);  //Obtain

@@ -8,7 +8,6 @@
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
-#include "/usr/include/opencv2/face.hpp"
 
 using namespace std;
 
@@ -28,10 +27,7 @@ CLocalSystem::CLocalSystem()  //member-initializer list
     : m_speaker(),
     m_sendBlue()
 {
-    facemark = FacemarkLBF::create();
-    facemark->loadModel("/usr/share/OpenCV/lbfmodel.yaml");
-
-
+   
     myPtr = this;
     //open bluetooth message queue in the x mode
     //and with null attributes
@@ -254,7 +250,10 @@ void* CLocalSystem::Alert(void *arg)
         cout << "ALERT received!" << endl;
         //unclock the mutex associated to the condition variable to avoid race conditions
         ptr->m_speaker.setAlarm(ptr->soundMsg);  //breaks when sound msg is finisg
+        cout << "After setAlarm" << endl;
+
         pthread_mutex_unlock(&ptr->mutexSoundMsg);
+        cout << "After unlock" << endl;
         //pthread_mutex_unlock(&ptr->mutexAlert);
     }
     return 0;
@@ -267,14 +266,14 @@ void CLocalSystem::signal_Handler(int sig)
     switch(sig)
     {
         case SIGUSR1:      //secondary sensors signal
-            pthread_mutex_lock(&myPtr->mutexSoundMsg);        
+            //pthread_mutex_lock(&myPtr->mutexSoundMsg);        
             myPtr->soundMsg = 1;
             cout << "SIGUSR1 received!" << endl;
 
             //pthread_mutex_lock(&myPtr->mutexAlert);
             pthread_cond_signal(&myPtr->condSoundMsg);
             //pthread_cond_signal(&thisPtr->condRecvSensors);
-            pthread_mutex_unlock(&myPtr->mutexSoundMsg); 
+            //pthread_mutex_unlock(&myPtr->mutexSoundMsg); 
             //pthread_mutex_unlock(&myPtr->mutexAlert);*/
             cout << "SIGUSR1 out received!" << endl;
             break;

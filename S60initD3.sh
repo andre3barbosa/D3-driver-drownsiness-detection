@@ -5,11 +5,17 @@ modprobe hci_uart
 hciattach /dev/ttyS0 bcm43xx 921600 noflow
 sdptool add SP
 
+/etc/init.d/blue.sh >/dev/null 2>&1 &
+
+
 echo "Inserting Led Device Driver..."
-insmod /root/led.ko
+insmod led.ko
 
-# daemon process
-/root/dSensors.elf &
+mkdir /dev/mqueue
+mount -t mqueue none /dev/mqueue
 
-# main process
-/root/d3.elf
+# # daemon process
+# /root/dSensors.elf
+
+# # main process
+# /root/d3.elf

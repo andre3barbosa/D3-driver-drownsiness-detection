@@ -6,6 +6,8 @@
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
+#include <fcntl.h>
+
 
 using namespace std;
 using namespace cv;
@@ -24,12 +26,16 @@ using namespace cv;
 #define MSGQ_BLUET      "/msgQueueBluet"
 #define MSGQ_SENSORS    "/msgQueueSensors"
 
+CDaemon* CDaemon::myPtr = NULL;
 
 CDaemon::CDaemon()
     :m_camera("camName"),
     m_temperature("devTemp"),
-    m_heartRate("devHR")
+    m_heartRate("devHR"),
+    LedOn('1'),
+    LedOff('0')
 {
+
     this->itv.it_interval.tv_sec = TIM_INTV_SEC;
     this->itv.it_interval.tv_usec = TIM_INTV_US;
     this->itv.it_value.tv_sec = TIM_VAL_SEC;
@@ -56,16 +62,15 @@ CDaemon::CDaemon()
         exit(1);
     }
 
+    m_drowCam.init();
+
     nextClass = 4;
     for(int i=0;i<15;i++)
         classInput[i]=0.0;
 
 
-    // system("insmod led.ko");
-    system("echo none >/sys/class/leds/led0/trigger");
-
-    //file.open("d3.txt",ios_base::app);
-
+   
+    file_descriptor = open("/dev/led0", O_WRONLY);
 
     this->tripStatus = false;
     //begin = std::chrono::steady_clock::now();
@@ -78,6 +83,8 @@ CDaemon::~CDaemon()
 
 void CDaemon::init()
 {
+
+    
 //define the priority and attributes of each thread
 // open the msg queue
     //mq_open(&msgQueueSensors);
@@ -108,7 +115,7 @@ void CDaemon::run()
         setitimer(ITIMER_REAL, &itv, NULL);
     //set signal handler for periodic sensors reading
         signal(SIGALRM, timer_Handler);
-    signal(SIGINT, timer_Handler);
+        signal(SIGINT, timer_Handler);
  
     pthread_join(T_BluetListening_id, NULL);
     //pthread_join(T_SecondarySensor_id, NULL);
@@ -129,12 +136,15 @@ void* CDaemon::CamProcess(void* arg)
     char msg[10000];
     int localPid;
 
-    do
-    {
-        if( mq_getattr(ptr->msgQueuePid, &ptr->msgq_attr_pid) == -1)
-            cerr << "In mq_getattr() of Bluetooth" << endl;
-    }while(ptr->msgq_attr_pid.mq_curmsgs != 0);
+    cout << "Before att" <<endl;
 
+    // do
+    // {
+    //     if( mq_getattr(ptr->msgQueuePid, &ptr->msgq_attr_pid) == -1)
+    //         cerr << "In mq_getattr() of Bluetooth" << endl;
+    // }while(ptr->msgq_attr_pid.mq_curmsgs != 0);
+
+    cout << "Before Recieve" <<endl;
     error = mq_receive(ptr->msgQueuePid, msg, 10000, NULL);
     if(error == -1)
     {
@@ -147,8 +157,9 @@ void* CDaemon::CamProcess(void* arg)
     else
     {
         localPid = stoi(msg);
-        cout << "[MSGQUEUEBLUET] Msg received:" << localPid <<endl;
+        cout << "[MSGQUEUEPID] Msg received:" << localPid <<endl;
     }
+    cout << "After Recieve" <<endl;
 
 
     while(1){
@@ -156,7 +167,7 @@ void* CDaemon::CamProcess(void* arg)
         pthread_mutex_lock(&ptr->mutexEARshared);
         
         pthread_cond_wait(&ptr->condEARclass, &ptr->mutexEARshared);
-        //cout << "[CamProcess] Classification realized"<<endl;
+        cout << "[CamProcess] Classification realized"<<endl;
         /* Analyze the EAR values to make a prediction*/
         alarmValue = ptr->m_drowCam.checkDrowState(ptr->classInput);
         pthread_mutex_unlock(&ptr->mutexEARshared);
@@ -195,6 +206,7 @@ void* CDaemon::CamCapture(void* arg)
             
             if((ptr->nextClass--) == 0)
             {
+                //cout << "if" << endl;
                 pthread_cond_signal(&ptr->condEARclass);
 
                 ptr->nextClass = NUM_NEXT_CLASS;
@@ -232,31 +244,7 @@ void* CDaemon::BluetListening(void* arg)
     ptr->m_listenBlue.listenRemote(targetAddr);
     cout << "Target address: " << targetAddr << endl;
 
-    //Format: "duration,alerts"
     
-    // allocate socket
-    //ptr->s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-
-    // bind socket to port 1 of the first available 
-    // local bluetooth adapter
-    // loc_addr.rc_family = AF_BLUETOOTH;
-    // loc_addr.rc_bdaddr = my_bdaddr_any;
-    // loc_addr.rc_channel = (uint8_t) 1;
-    // bind(ptr->s, (struct sockaddr *)&loc_addr, sizeof(loc_addr));
-
-    // put socket into listening mode
-    // listen for connections on a socket
-    // listen(ptr->s, 1);
-
-    // // accept one connection
-    // ptr->client = accept(ptr->s, (struct sockaddr *)&rem_addr, &opt);
-    
-    // // Send data to the android device
-    // //write(ptr->s, "Hello Android!", 14);
-    // ba2str( &rem_addr.rc_bdaddr, targetAddr );
-    // cerr << "accepted connection from" << targetAddr <<endl;
-
-
     while(1)
     {
         memset(buf, 0, sizeof(buf));
@@ -265,9 +253,6 @@ void* CDaemon::BluetListening(void* arg)
         bytes_read = ptr->m_listenBlue.readFromRemote(buf,sizeof(buf));
         if( bytes_read > 0 ) 
         {
-            //printf("received [%s]\n", buf);
-            //cout << "received [" << targetAddr << "]" << endl;
-            //cout << "value [" << buf << "]" << endl;
 
             switch(buf[0])
             {
@@ -275,30 +260,26 @@ void* CDaemon::BluetListening(void* arg)
                     do
                     {
                         
-
-                        
+                        cout << " error 1 " << endl;
                         error = mq_send(ptr->msgQueueBluet, targetAddr, sizeof(targetAddr)/sizeof(targetAddr[0])+1, 1);
+                        cout << "error 3" << endl;
                         if(error == -1)
                         { 
                             error = errno;
+
+                            cout << " error 2 " << endl;
                             if(error != EAGAIN)
                                 std::cerr << "In mq_send()";
                             exit(1);    //error exit
                         }
                     } while(error == EAGAIN);
-                        // close(ptr->client);
-                        // close(ptr->s);
-                        // ptr->s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-                        // connect(ptr->s, (struct sockaddr *)&rem_addr, sizeof(rem_addr));
-                        // cout << "[recvBlut] I command receiveid" << endl;
-                        // l = write(ptr->s, "hello!", 6);
-                        // cout << "Hello sent! write[" << l <<"]" <<endl;
+
                          cout << "Value: [" << buf <<"]" <<endl;
-                        // close(ptr->s);
-                        //exit(1);
+
                         ptr->tripStatus = true;
+                        cout << "trip" << endl;
                         //Turn led on when trip starts
-                        system("echo 1 > /dev/led0");
+                        write(ptr->file_descriptor , &ptr->LedOn, 1);
 
                     break;
                 case 'T':
@@ -308,7 +289,6 @@ void* CDaemon::BluetListening(void* arg)
                     /*Send to bluetooth message queue*/
                     do
                     {
-                        //cout << "[recvBlut]: Buf value " << buf << endl;
                         error = mq_send(ptr->msgQueueSensors, dataSample, 4, 1);
                         if(error == -1)
                         { 
@@ -319,7 +299,8 @@ void* CDaemon::BluetListening(void* arg)
                     } while(error == EAGAIN);
 
                     //Turn led off when trip stops
-                    system("echo 0 > /dev/led0");
+                    write(ptr->file_descriptor , &ptr->LedOff, 1);
+                   
                     ptr->tripStatus = false;
                     
                     cout << "[recvBlut] T command receiveid" << endl;
@@ -332,7 +313,6 @@ void* CDaemon::BluetListening(void* arg)
             }
 
         }
-        //close(ptr->client);
     }       
 }
 void* CDaemon::SecondarySensor(void*)
@@ -346,22 +326,13 @@ void CDaemon::timer_Handler(int sig)
 {
     if(sig == SIGALRM)
     {
-        //cout << "ALARM received!" << endl;
+        
     }
     else if(sig == SIGINT)   //the execution of program is interrupted
     {
-        //close the bluetooth message queue
-        //mq_close(myPtr->msgQueueBluet);
-        // remove msgq from the system
-        //if (mq_unlink(MSGQ_BLUET) == -1)
-        //    cerr << "Removing bt queue error" << endl;
-        //close sensors message queue
-        //mq_close(myPtr->msgQueueSensors);
-        // if (mq_unlink(MSGQ_SENSORS) == -1)
-        //     cerr << "Removing sensors queue error" << endl;
-        //myPtr->m_listenBlue.exit();
-        
+      
         //Removes led device driver
+        close (myPtr->file_descriptor );
         system("rmmod led.ko");
 
         //successful termination

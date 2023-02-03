@@ -3,6 +3,7 @@
  
 #include <string>
 #include <iostream>
+#include <unistd.h>
  
 class CDevSound
 {
@@ -14,6 +15,8 @@ public:
 
 private:
     //define variable with the voice msg path and file name
+    
+
 };
 // End C_DevSound class definition
  

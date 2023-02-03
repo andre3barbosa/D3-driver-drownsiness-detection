@@ -22,12 +22,6 @@ CDrowsinessCam::CDrowsinessCam()
 
     this->alertNumber = 0;
 
-   // Load landmark detector
-    // facemark = FacemarkLBF::create();
-    // facemark->loadModel("/usr/share/OpenCV/lbfmodel.yaml");
-    
-    //Load the trained SVM model
-    svm = SVM::load("/root/svm.xml");
 
     next_class = NUM_NEXT_CLASS;
 
@@ -47,6 +41,18 @@ CDrowsinessCam::~CDrowsinessCam()
 {
 
 }
+
+void CDrowsinessCam::init(){
+
+    // Load landmark detector
+    facemark = FacemarkLBF::create();
+    facemark->loadModel("/usr/share/OpenCV/lbfmodel.yaml");
+    
+    //Load the trained SVM model
+    svm = SVM::load("/root/svm.xml");
+
+}
+
 bool CDrowsinessCam::processParameter(Mat frame)
 {
 

@@ -88,6 +88,9 @@ private:
     bool tripStatus;
 
 
+    int file_descriptor;
+    char LedOn;
+    char LedOff;
    
 
 
