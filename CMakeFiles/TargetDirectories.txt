@@ -1,0 +1,3 @@
+/home/andre/D3-driver-drownsiness-detection-master/CMakeFiles/d3.elf.dir
+/home/andre/D3-driver-drownsiness-detection-master/CMakeFiles/edit_cache.dir
+/home/andre/D3-driver-drownsiness-detection-master/CMakeFiles/rebuild_cache.dir
