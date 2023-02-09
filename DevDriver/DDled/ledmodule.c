@@ -168,7 +168,7 @@ module_init(led_device_init);
 /*
 ** Module exit function
 */ 
-static void __exit led_device_driver_exit(void) 
+static void __exit led_device_exit(void) 
 {
 	SetGPIOFunction(s_pGpioRegisters, LedGpioPin, 0); //Configure the pin as input
 	iounmap(s_pGpioRegisters);
@@ -178,4 +178,4 @@ static void __exit led_device_driver_exit(void)
 	unregister_chrdev_region(ledDevice_majorminor, 1);
 }
 
-module_exit(led_device_driver_exit);
+module_exit(led_device_exit);
