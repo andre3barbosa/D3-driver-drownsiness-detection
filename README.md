@@ -20,3 +20,5 @@ The goal of this project was to develop a reliable drowsiness detection device a
 3. Development Environment
 4. Multitasking and Concurrency
 5. Pthreads Programming
+
+For more information see the doc folder which contains detailed project documentation.
