@@ -15,3 +15,8 @@ The goal of this project was to develop a reliable drowsiness detection device a
       • Pthreads
       
 ## Work Areas
+1. Real-Time Design and Development
+2. Embedded & Real-time Systems
+3. Development Environment
+4. Multitasking and Concurrency
+5. Pthreads Programming
